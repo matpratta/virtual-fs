@@ -7,6 +7,10 @@
  * Sistema de arquivos virtual baseado no Linux para matéria de Sistemas Operacionais
  */
 
+/*******************************************************************************
+ * Definições e Estruturas
+ */
+
 // Struct para entrada do diretório
 struct dirItem {
     char nome [8];
@@ -18,7 +22,11 @@ struct dirItem {
 struct dirItem estrutura [1024];
 int dirAtual = 0;
 
-// Utilitário para criar entrada
+/*******************************************************************************
+ * Utilitários
+ */
+
+// Utilitário para gerar struct representando entrada
 struct dirItem util_criarEntrada(char nome [8], int dirPai) {
     struct dirItem entrada;
 
@@ -29,6 +37,8 @@ struct dirItem util_criarEntrada(char nome [8], int dirPai) {
 
     return entrada;    
 }
+
+// Mesma função anterior, porém com suporte a char* para inserir direto do código 
 struct dirItem util_criarEntradaPtr(char* nome, int dirPai) {
     // Criar um vetor de caracteres e converter de ponteiro para vetor usando strcpy, só vai ser usada para criar o root
     char nomeVetor [8];
@@ -36,6 +46,8 @@ struct dirItem util_criarEntradaPtr(char* nome, int dirPai) {
     
     return util_criarEntrada(nomeVetor, dirPai);
 }
+
+// Função para gerar uma string contendo o caminho completo para a entrada atual
 void util_gerarNomeCompleto (struct dirItem entrada, char* nomeCompleto) {
     char caminho [256];
 
@@ -58,35 +70,145 @@ void util_gerarNomeCompleto (struct dirItem entrada, char* nomeCompleto) {
     snprintf(nomeCompleto, 256, "%s/%s", caminho, entrada.nome);
 }
 
-void func_ls (int diretorio) {
+// Função para obter a próxima entrada vazia na listagem de arquivos
+int util_proximoIndex () {
+    for (int i = 0; i < 1024; i++) {
+        if (strlen(estrutura[i].nome) == 0) return i;
+    }
+    return -1;
+}
+
+// Função para buscar entrada em diretório
+int util_buscarEntrada (char* nome, int diretorio) {
+    for (int i = 0; i < 1024; i++) {
+        if (0 == strcmp(estrutura[i].nome, nome) && (diretorio == -1 || estrutura[i].dirPai == diretorio))
+            return i;
+    }
+    return -1;
+}
+
+
+/*******************************************************************************
+ * Funções de Comandos
+ */
+
+// ls ()
+void func_ls (char* args) {
     struct dirItem entrada;
     struct tm data;
+
+    // Verificar se passamos argumentos modificadores
+    int isList = 0, isDetailed = 0, isFullPath = 0;
+    if (args != NULL && args[0] == '-') {
+        for (int iChar = 0; iChar < strlen(args); iChar++) {
+            switch (args[iChar]) {
+                case 'l': isList = 1; break;
+                case 's': isDetailed = 1; break;
+                case 'f': isFullPath = 1; break;
+            }
+        }
+    }
+
+    // Preparativos
+    if (isList && isDetailed) {
+        // Exibir cabeçalho da tabela detalhada
+        printf("    DATA     HORA   Arquivo\n");
+    }
+
+    // Loop principal
     for (int i = 0; i < 1024; i++) {
         entrada = estrutura[i];
 
         // Verificar se o diretório pai é o atual
-        if (entrada.dirPai != diretorio) continue;
+        if (entrada.dirPai != dirAtual) continue;
 
         // Verificar se a entrada existe
         if (strlen(entrada.nome) == 0) continue;
 
-        char nomeCompleto [256];
-        util_gerarNomeCompleto(entrada, nomeCompleto);
-        data = *localtime(&entrada.dataHora);
+        if (isList) {
+            // Modificador lista
+            if (isDetailed) {
+                // Pegar data do arquivo
+                data = *localtime(&entrada.dataHora);
 
-        printf("%4d-%02d-%02d %02d:%02d:%02d | %s\n", data.tm_year + 1900, data.tm_mon + 1, data.tm_mday, data.tm_hour, data.tm_min, data.tm_sec, nomeCompleto);
+                char* fileName = entrada.nome;
+                if (isFullPath) {
+                    // Exibir caminho completo da pasta ao invés de apenas o nome
+                    char nomeCompleto [256];
+                    util_gerarNomeCompleto(entrada, nomeCompleto);
+                    fileName = nomeCompleto;
+                }
+
+                // Exibe a linha
+                printf("%4d-%02d-%02d %02d:%02d:%02d %s\n", data.tm_year + 1900, data.tm_mon + 1, data.tm_mday, data.tm_hour, data.tm_min, data.tm_sec, fileName);
+            } else {
+                printf("%s\n", entrada.nome);
+            }
+        } else {
+            // Exibir lado a lado
+            printf("%s ", entrada.nome);
+        }
+    }
+
+    // Encerrar comando com uma nova linha
+    printf("\n");
+}
+
+// mkdir (dirname)
+void func_mkdir (char* nome) {
+    // Testar se o diretorio já existe
+    if (util_buscarEntrada(nome, dirAtual) > -1) {
+        printf("Erro: diretorio ja existente.\n");
+        return;
+    }
+
+    int iEstrutura = util_proximoIndex();
+    estrutura[iEstrutura] = util_criarEntrada(nome, dirAtual);
+}
+
+// rmdir (dirname)
+void func_rmdir (char* nome) {
+    // Testar se o diretorio já existe
+    int iEstrutura = util_buscarEntrada(nome, dirAtual);
+    if (iEstrutura == -1) {
+        printf("Erro: diretorio nao encontrado.\n");
+        return;
+    }
+
+    // Sobrescrever dados e zerar nome
+    estrutura[iEstrutura] = util_criarEntradaPtr("", 0);
+}
+
+// cd (dirname)
+void func_cd (char* diretorio) {
+    if (0 == strcmp(diretorio, "..")) {
+        // Voltamos ao parent
+        dirAtual = estrutura[dirAtual].dirPai;
+    } else {
+        // Procuramos o index
+        int iDiretorio = util_buscarEntrada(diretorio, dirAtual);
+
+        if (iDiretorio == -1) {
+            // Não encontrado, retornar erro
+            printf("Erro: diretorio nao encontrado.\n");
+        } else {
+            // Encontrado, apenas trocamos o index do atual
+            dirAtual = iDiretorio;
+        }
     }
 }
 
+/*******************************************************************************
+ * Prompt de Comando
+ */
 void prompt () {
-    struct dirItem dirAtualInfo = estrutura[dirAtual];
-    char comando [256];
-
     // Gera o nome do caminho atual para exibir no prompt
     char dirAtualCaminho [256];
+    struct dirItem dirAtualInfo = estrutura[dirAtual];
     util_gerarNomeCompleto(dirAtualInfo, dirAtualCaminho);
 
     // Exibe prompt e solicita entrada
+    char comando [256];
     printf("%s $ ", dirAtualCaminho);
     fgets(comando, 256, stdin);
 
@@ -96,14 +218,22 @@ void prompt () {
 
     // Dividir o comando em blocos de espaço
     char* comandoPtr = strtok(comando, " ");
+    char* arg0 = strtok(NULL, " ");
 
     // Testar comando exit
     if (0 == strcmp(comandoPtr, "exit")) return;
-    else if (0 == strcmp(comandoPtr, "ls")) func_ls(dirAtual);
+    else if (0 == strcmp(comandoPtr, "ls")) func_ls(arg0);
+    else if (0 == strcmp(comandoPtr, "mkdir")) func_mkdir(arg0);
+    else if (0 == strcmp(comandoPtr, "rmdir")) func_rmdir(arg0);
+    else if (0 == strcmp(comandoPtr, "cd")) func_cd(arg0);
 
     prompt();
 }
 
+
+/*******************************************************************************
+ * Main
+ */
 int main () {
     printf("+---------------------------------------------------+\n");
     printf("|            Sistema de Arquivos Virtual            |\n");
@@ -112,14 +242,6 @@ int main () {
 
     // Criar root
     estrutura[0] = util_criarEntradaPtr("/", 0);
-
-    estrutura[1] = util_criarEntradaPtr("dir1", 0);
-    estrutura[2] = util_criarEntradaPtr("dir2", 0);
-    estrutura[3] = util_criarEntradaPtr("dir3", 0);
-
-    estrutura[4] = util_criarEntradaPtr("dir4", 2);
-    estrutura[5] = util_criarEntradaPtr("dir5", 2);
-    estrutura[6] = util_criarEntradaPtr("dir6", 5);
 
     prompt();
 
