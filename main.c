@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <string.h>
 
@@ -51,6 +52,7 @@ struct dirItem util_criarEntradaPtr(char* nome, int dirPai) {
 void util_gerarNomeCompleto (struct dirItem entrada, char* nomeCompleto) {
     char caminho [256];
 
+    // Validar se estamos na root ou em outro diretório
     if (entrada.dirPai == 0) {
         // Estamos na root
         
@@ -72,6 +74,7 @@ void util_gerarNomeCompleto (struct dirItem entrada, char* nomeCompleto) {
 
 // Função para obter a próxima entrada vazia na listagem de arquivos
 int util_proximoIndex () {
+    // Rodamos um loop em todas entradas, ao encontrar uma vazia, retornamos o index
     for (int i = 0; i < 1024; i++) {
         if (strlen(estrutura[i].nome) == 0) return i;
     }
@@ -98,13 +101,14 @@ void func_ls (char* args) {
     struct tm data;
 
     // Verificar se passamos argumentos modificadores
-    int isList = 0, isDetailed = 0, isFullPath = 0;
+    int isList = 0, isDetailed = 0, isFullPath = 0, isIndexIncluded = 0;
     if (args != NULL && args[0] == '-') {
         for (int iChar = 0; iChar < strlen(args); iChar++) {
             switch (args[iChar]) {
                 case 'l': isList = 1; break;
                 case 's': isDetailed = 1; break;
                 case 'f': isFullPath = 1; break;
+                case 'i': isIndexIncluded = 1; break;
             }
         }
     }
@@ -112,11 +116,14 @@ void func_ls (char* args) {
     // Preparativos
     if (isList && isDetailed) {
         // Exibir cabeçalho da tabela detalhada
-        printf("    DATA     HORA   Arquivo\n");
+        if (isIndexIncluded)
+            printf("\nINDX     DATA     HORA   Arquivo\n");
+        else
+            printf("\n    DATA     HORA   Arquivo\n");
     }
 
-    // Loop principal
-    for (int i = 0; i < 1024; i++) {
+    // Loop principal, pulamos o index 0 pois é o root
+    for (int i = 1; i < 1024; i++) {
         entrada = estrutura[i];
 
         // Verificar se o diretório pai é o atual
@@ -140,7 +147,10 @@ void func_ls (char* args) {
                 }
 
                 // Exibe a linha
-                printf("%4d-%02d-%02d %02d:%02d:%02d %s\n", data.tm_year + 1900, data.tm_mon + 1, data.tm_mday, data.tm_hour, data.tm_min, data.tm_sec, fileName);
+                if (isIndexIncluded)
+                    printf("%4d %4d-%02d-%02d %02d:%02d:%02d %s\n", i, data.tm_year + 1900, data.tm_mon + 1, data.tm_mday, data.tm_hour, data.tm_min, data.tm_sec, fileName);
+                else
+                    printf("%4d-%02d-%02d %02d:%02d:%02d %s\n", data.tm_year + 1900, data.tm_mon + 1, data.tm_mday, data.tm_hour, data.tm_min, data.tm_sec, fileName);
             } else {
                 printf("%s\n", entrada.nome);
             }
@@ -181,6 +191,7 @@ void func_rmdir (char* nome) {
 
 // cd (dirname)
 void func_cd (char* diretorio) {
+    // A intenção é ir para o diretório anterior?
     if (0 == strcmp(diretorio, "..")) {
         // Voltamos ao parent
         dirAtual = estrutura[dirAtual].dirPai;
@@ -196,6 +207,20 @@ void func_cd (char* diretorio) {
             dirAtual = iDiretorio;
         }
     }
+}
+
+// help ()
+void func_help () {
+    printf("Lista de comandos disponiveis:\n");
+    printf("$ help\t\tExibe a listagem de comandos.\n");
+    printf("$ mkdir (nome)\tCria um diretorio com o nome especificado.\n");
+    printf("$ rmdir (nome)\tExclui um diretorio com o nome especificado.\n");
+    printf("$ cd (nome)\tMuda para o diretorio especificado.\n");
+    printf("$ ls [-mod]\tLista o diretorio atual com os modificadores especificados.\n");
+    printf("\t-l\tExibe os itens como lista\n");
+    printf("\t-s\tExibe os itens de forma detalhada\n");
+    printf("\t-f\tExibe os itens com seus caminhos completos\n");
+    printf("\t-i\tExibe os itens com seus indices na estrutura de arquivos\n");
 }
 
 /*******************************************************************************
@@ -222,6 +247,7 @@ void prompt () {
 
     // Testar comando exit
     if (0 == strcmp(comandoPtr, "exit")) return;
+    else if (0 == strcmp(comandoPtr, "help")) func_help();
     else if (0 == strcmp(comandoPtr, "ls")) func_ls(arg0);
     else if (0 == strcmp(comandoPtr, "mkdir")) func_mkdir(arg0);
     else if (0 == strcmp(comandoPtr, "rmdir")) func_rmdir(arg0);
