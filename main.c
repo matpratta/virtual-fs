@@ -23,6 +23,15 @@ struct dirItem {
 struct dirItem estrutura [1024];
 int dirAtual = 0;
 
+// Cores para deixar o prompt mais organizado
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_YELLOW  "\x1b[33m"
+#define ANSI_COLOR_BLUE    "\x1b[34m"
+#define ANSI_COLOR_MAGENTA "\x1b[35m"
+#define ANSI_COLOR_CYAN    "\x1b[36m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
+
 /*******************************************************************************
  * Utilitários
  */
@@ -117,9 +126,9 @@ void func_ls (char* args) {
     if (isList && isDetailed) {
         // Exibir cabeçalho da tabela detalhada
         if (isIndexIncluded)
-            printf("\nINDX     DATA     HORA   Arquivo\n");
+            printf("\n%sINDX    %sDATA      %sHORA   %sARQUIVO\n", ANSI_COLOR_RED, ANSI_COLOR_MAGENTA, ANSI_COLOR_YELLOW, ANSI_COLOR_BLUE);
         else
-            printf("\n    DATA     HORA   Arquivo\n");
+            printf("\n   %sDATA      %sHORA   %sARQUIVO\n", ANSI_COLOR_MAGENTA, ANSI_COLOR_YELLOW, ANSI_COLOR_BLUE);
     }
 
     // Loop principal, pulamos o index 0 pois é o root
@@ -148,9 +157,9 @@ void func_ls (char* args) {
 
                 // Exibe a linha
                 if (isIndexIncluded)
-                    printf("%4d %4d-%02d-%02d %02d:%02d:%02d %s\n", i, data.tm_year + 1900, data.tm_mon + 1, data.tm_mday, data.tm_hour, data.tm_min, data.tm_sec, fileName);
+                    printf("%s%4d %s%4d-%02d-%02d %s%02d:%02d:%02d %s%s\n", ANSI_COLOR_RED, i, ANSI_COLOR_MAGENTA, data.tm_year + 1900, data.tm_mon + 1, data.tm_mday, ANSI_COLOR_YELLOW, data.tm_hour, data.tm_min, data.tm_sec, ANSI_COLOR_BLUE, fileName);
                 else
-                    printf("%4d-%02d-%02d %02d:%02d:%02d %s\n", data.tm_year + 1900, data.tm_mon + 1, data.tm_mday, data.tm_hour, data.tm_min, data.tm_sec, fileName);
+                    printf("%s%4d-%02d-%02d %s%02d:%02d:%02d %s%s\n", ANSI_COLOR_MAGENTA, data.tm_year + 1900, data.tm_mon + 1, data.tm_mday, ANSI_COLOR_YELLOW, data.tm_hour, data.tm_min, data.tm_sec, ANSI_COLOR_BLUE, fileName);
             } else {
                 printf("%s\n", entrada.nome);
             }
@@ -234,7 +243,7 @@ void prompt () {
 
     // Exibe prompt e solicita entrada
     char comando [256];
-    printf("%s $ ", dirAtualCaminho);
+    printf("%s%s %s$ %s", ANSI_COLOR_BLUE, dirAtualCaminho, ANSI_COLOR_GREEN, ANSI_COLOR_RESET);
     fgets(comando, 256, stdin);
 
     // Limpar comando, caso o último char seja \n (nova linha), substituir por \0 (NULL)
