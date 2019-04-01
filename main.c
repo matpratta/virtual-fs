@@ -36,6 +36,11 @@ int dirAtual = 0;
  * Utilitários
  */
 
+// Utilitário para mensagens de erro
+void err (char* errorMsg) {
+    printf("%sERRO: %s%s\n", ANSI_COLOR_RED, errorMsg, ANSI_COLOR_RESET);
+}
+
 // Utilitário para gerar struct representando entrada
 struct dirItem util_criarEntrada(char nome [8], int dirPai) {
     struct dirItem entrada;
@@ -175,9 +180,15 @@ void func_ls (char* args) {
 
 // mkdir (dirname)
 void func_mkdir (char* nome) {
+    // Testar se o diretorio esta em brnaco
+    if (strlen(nome) == 0) {
+        err("Nenhum diretorio informado.");
+        return;
+    }
+
     // Testar se o diretorio já existe
     if (util_buscarEntrada(nome, dirAtual) > -1) {
-        printf("Erro: diretorio ja existente.\n");
+        err("Diretorio ja existente.");
         return;
     }
 
@@ -187,10 +198,16 @@ void func_mkdir (char* nome) {
 
 // rmdir (dirname)
 void func_rmdir (char* nome) {
+    // Testar se o diretorio esta em brnaco
+    if (strlen(nome) == 0) {
+        err("Nenhum diretorio informado.");
+        return;
+    }
+    
     // Testar se o diretorio já existe
     int iEstrutura = util_buscarEntrada(nome, dirAtual);
     if (iEstrutura == -1) {
-        printf("Erro: diretorio nao encontrado.\n");
+        err("Diretorio nao encontrado.");
         return;
     }
 
@@ -200,6 +217,12 @@ void func_rmdir (char* nome) {
 
 // cd (dirname)
 void func_cd (char* diretorio) {
+    // Verificar se o usuário passou um diretorio
+    if (strlen(diretorio) == 0) {
+        err("Nenhum diretorio informado.");
+        return;
+    }
+
     // A intenção é ir para o diretório anterior?
     if (0 == strcmp(diretorio, "..")) {
         // Voltamos ao parent
@@ -210,7 +233,7 @@ void func_cd (char* diretorio) {
 
         if (iDiretorio == -1) {
             // Não encontrado, retornar erro
-            printf("Erro: diretorio nao encontrado.\n");
+            err("Diretorio nao encontrado.");
         } else {
             // Encontrado, apenas trocamos o index do atual
             dirAtual = iDiretorio;
@@ -221,15 +244,34 @@ void func_cd (char* diretorio) {
 // help ()
 void func_help () {
     printf("Lista de comandos disponiveis:\n");
-    printf("$ help\t\tExibe a listagem de comandos.\n");
-    printf("$ mkdir (nome)\tCria um diretorio com o nome especificado.\n");
-    printf("$ rmdir (nome)\tExclui um diretorio com o nome especificado.\n");
-    printf("$ cd (nome)\tMuda para o diretorio especificado.\n");
-    printf("$ ls [-mod]\tLista o diretorio atual com os modificadores especificados.\n");
-    printf("\t-l\tExibe os itens como lista\n");
-    printf("\t-s\tExibe os itens de forma detalhada\n");
-    printf("\t-f\tExibe os itens com seus caminhos completos\n");
-    printf("\t-i\tExibe os itens com seus indices na estrutura de arquivos\n");
+    printf("$ %shelp\t\t%sExibe a listagem de comandos.\n", ANSI_COLOR_YELLOW, ANSI_COLOR_RESET);
+    printf("$ %sexit\t\t%sEncerra o aplicativo.\n", ANSI_COLOR_YELLOW, ANSI_COLOR_RESET);
+    printf("$ %spwd\t\t%sExibe o diretorio atual.\n", ANSI_COLOR_YELLOW, ANSI_COLOR_RESET);
+    printf("$ %smkdir %s(nome)\t%sCria um diretorio com o nome especificado.\n", ANSI_COLOR_YELLOW, ANSI_COLOR_BLUE, ANSI_COLOR_RESET);
+    printf("$ %srmdir %s(nome)\t%sExclui um diretorio com o nome especificado.\n", ANSI_COLOR_YELLOW, ANSI_COLOR_BLUE, ANSI_COLOR_RESET);
+    printf("$ %scd %s(nome)\t%sMuda para o diretorio especificado.\n", ANSI_COLOR_YELLOW, ANSI_COLOR_BLUE, ANSI_COLOR_RESET);
+    printf("$ %sls %s[-mod]\t%sLista o diretorio atual com os modificadores especificados.\n", ANSI_COLOR_YELLOW, ANSI_COLOR_BLUE, ANSI_COLOR_RESET);
+    printf("\t%s-l\t%sExibe os itens como lista\n", ANSI_COLOR_BLUE, ANSI_COLOR_RESET);
+    printf("\t%s-s\t%sExibe os itens de forma detalhada\n", ANSI_COLOR_BLUE, ANSI_COLOR_RESET);
+    printf("\t%s-f\t%sExibe os itens com seus caminhos completos\n", ANSI_COLOR_BLUE, ANSI_COLOR_RESET);
+    printf("\t%s-i\t%sExibe os itens com seus indices na estrutura de arquivos\n", ANSI_COLOR_BLUE, ANSI_COLOR_RESET);
+}
+
+// pwd ()
+void func_pwd () {
+    // Extrair string com diretório atual
+    char dirAtualCaminho [256];
+    struct dirItem dirAtualInfo = estrutura[dirAtual];
+    util_gerarNomeCompleto(dirAtualInfo, dirAtualCaminho);
+
+    // Exibir na tela
+    printf("%s\n", dirAtualCaminho);
+}
+
+// Erro: comando não encontrado
+void err_cmdnotfound () {
+    err("Comando nao existente.");
+    printf("%sPara uma lista de comandos, digite %shelp%s\n", ANSI_COLOR_RESET, ANSI_COLOR_YELLOW, ANSI_COLOR_RESET);
 }
 
 /*******************************************************************************
@@ -254,6 +296,9 @@ void prompt () {
     char* comandoPtr = strtok(comando, " ");
     char* arg0 = strtok(NULL, " ");
 
+    // Manter arg0 em branco caso não exista (NULL)
+    if (arg0 == NULL) arg0 = "";
+
     // Testar comando exit
     if (0 == strcmp(comandoPtr, "exit")) return;
     else if (0 == strcmp(comandoPtr, "help")) func_help();
@@ -261,6 +306,8 @@ void prompt () {
     else if (0 == strcmp(comandoPtr, "mkdir")) func_mkdir(arg0);
     else if (0 == strcmp(comandoPtr, "rmdir")) func_rmdir(arg0);
     else if (0 == strcmp(comandoPtr, "cd")) func_cd(arg0);
+    else if (0 == strcmp(comandoPtr, "pwd")) func_pwd(arg0);
+    else err_cmdnotfound();
 
     prompt();
 }
