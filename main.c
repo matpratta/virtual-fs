@@ -23,14 +23,24 @@ struct dirItem {
 struct dirItem estrutura [1024];
 int dirAtual = 0;
 
-// Cores para deixar o prompt mais organizado
-#define ANSI_COLOR_RED     "\x1b[31m"
-#define ANSI_COLOR_GREEN   "\x1b[32m"
-#define ANSI_COLOR_YELLOW  "\x1b[33m"
-#define ANSI_COLOR_BLUE    "\x1b[34m"
-#define ANSI_COLOR_MAGENTA "\x1b[35m"
-#define ANSI_COLOR_CYAN    "\x1b[36m"
-#define ANSI_COLOR_RESET   "\x1b[0m"
+// Cores para deixar o prompt mais organizado (apenas no Linux por enquanto, sadly)
+#ifdef __unix__
+    #define ANSI_COLOR_RED     "\x1b[31m"
+    #define ANSI_COLOR_GREEN   "\x1b[32m"
+    #define ANSI_COLOR_YELLOW  "\x1b[33m"
+    #define ANSI_COLOR_BLUE    "\x1b[34m"
+    #define ANSI_COLOR_MAGENTA "\x1b[35m"
+    #define ANSI_COLOR_CYAN    "\x1b[36m"
+    #define ANSI_COLOR_RESET   "\x1b[0m"
+#else
+    #define ANSI_COLOR_RED     ""
+    #define ANSI_COLOR_GREEN   ""
+    #define ANSI_COLOR_YELLOW  ""
+    #define ANSI_COLOR_BLUE    ""
+    #define ANSI_COLOR_MAGENTA ""
+    #define ANSI_COLOR_CYAN    ""
+    #define ANSI_COLOR_RESET   ""
+#endif
 
 /*******************************************************************************
  * Utilitários
