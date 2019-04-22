@@ -1,3 +1,3 @@
-gcc main.c -o ./main
-chmod +x ./main
-./main
+gcc main.c -o ./bin/projeto
+chmod +x ./bin/projeto
+./bin/projeto
